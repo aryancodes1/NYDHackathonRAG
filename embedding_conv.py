@@ -21,14 +21,17 @@ pc.create_index("my-valid-index", dimension=384, metric="cosine", spec=Serverles
         region="us-east-1"))"""
 
 
-data = pd.read_csv("dataset/Patanjali_Yoga_Sutras_Verses_English_Questions.csv")
+data = pd.read_csv("NYDHackathonRAG/dataset/Bhagwad_Gita_Verses_English_Questions.csv")
 verses = data["translation"]
 
 story = ""
 
 for i in range(len(verses)):
-    # used for bhagwad gita story = story + " " + "Chapter: " + str(data["chapter"][i]) + ", " + " Verse Number: " + str(data['verse'][i]) + " , "+ translation[data['speaker'][i]] + "," + " Says That " + " , " + verses[i]
-    story = story + " " + "Chapter: " + str(data["chapter"][i]) + ", " + " Verse Number: " + str(data['verse'][i])  + " , " + verses[i] # used for yoga sutras
+    if(translation[data['speaker'][i]] == 'Sanjay'):
+        story = story + " " + "Chapter: " + str(data["chapter"][i]) + ", " + " Verse Number: " + str(data['verse'][i]) + " , "+ translation[data['speaker'][i]] + "," + " Narrates That " + " , " + verses[i]
+    else:
+         story = story + " " + "Chapter: " + str(data["chapter"][i]) + ", " + " Verse Number: " + str(data['verse'][i]) + " , "+ translation[data['speaker'][i]] + "," + "Says That " + " , " + verses[i]
+    # story = story + " " + "Chapter: " + str(data["chapter"][i]) + ", " + " Verse Number: " + str(data['verse'][i])  + " , " + verses[i] # used for yoga sutras
 
 def text_to_sentences(text):
     doc = nlp(text)
@@ -45,7 +48,7 @@ sentence_embeddings = model.encode(enhanced_sentences)
 
 print(len(enhanced_sentences))
 print(enhanced_sentences[0])
-with open("sentence_embeddings_yoga.pkl", "wb") as fp:
+with open("sentence_embeddings.pkl", "wb") as fp:
     pickle.dump(sentence_embeddings, fp)
-with open("enhanced_sentences_yoga.pkl", "wb") as f:
+with open("enhanced_sentences.pkl", "wb") as f:
     pickle.dump(enhanced_sentences, f)

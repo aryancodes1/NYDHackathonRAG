@@ -44,16 +44,26 @@ def chain_of_thought(question=""):
 def get_bot_response(context="", question=""):
     chat_completion = client.chat.completions.create(
         messages=[
-            {"role": "system", "content": "You are a Question answer Machine"},
+            {"role": "system", "content": "You are a highly knowledgeable and detail-oriented assistant, specializing in providing precise and contextually accurate answers."},
             {
                 "role": "user",
-                "content": f"Using the provided context: {context}, answer the question: {question}. Ensure your response is entirely based on the context without adding any information not explicitly stated. Consider the reasoning outlined in {chain_of_thought(question)} before formulating your response. Provide a clear, answer with a good explanation make it easy to understand for the reader",
+                "content": (
+                    f"Given the following context:\n\n"
+                    f"--- Context Start ---\n{context}\n--- Context End ---\n\n"
+                    f"Answer the question: {question}\n\n"
+                    f"Instructions:\n"
+                    f"- Your response should rely strictly on the provided context.\n"
+                    f"- Do not add any information or assumptions not explicitly mentioned in the context.\n"
+                    f"- Use clear reasoning and explain your answer in a way that is simple and easy to understand.\n"
+                    f"- Incorporate insights from the reasoning outlined in {chain_of_thought(question)} if applicable.\n"
+                ),
             },
         ],
         model="llama3-8b-8192",
         max_tokens=1000,
     )
     return chat_completion.choices[0].message.content
+
 
 
 def check_valid(context=""):
@@ -74,10 +84,10 @@ def check_valid(context=""):
 def check_type(context=""):
     chat_completion = client.chat.completions.create(
         messages=[
-            {"role": "system", "content": "You are a text Classifier"},
+            {"role": "system", "content": "You are a text Classifier who answers only in 0 and 1"},
             {
                 "role": "user",
-                "content": f"{context} - Classify this sentence as 0 or 1: If the sentence is related to the Patanjali Yoga Sutras—a foundational text of classical yoga philosophy focusing on meditation, self-discipline, and spiritual practice—or broadly discusses yoga principles, output 0. If the sentence is related to the Mahabharata—an ancient Indian epic—or the Bhagavad Gita, which is a sacred discourse within the Mahabharata that focuses on duty, dharma, and philosophy, output 1. Respond with only 0 or 1, nothing else.",
+                "content": f"{context} - Patanjali Yoga Sutras Theme: Focuses on yoga philosophy, meditation, self-discipline, and achieving inner peace. Key Concepts: Ashtanga Yoga (Eightfold Path): Yama, Niyama, Asana, Pranayama, Pratyahara, Dharana, Dhyana, Samadhi. Spiritual Practices: Self-discipline (Tapas), surrender (Ishwarapranidhana), and mindfulness. Imagination and Contemplation: Techniques for focusing the mind and calming mental fluctuations (Chitta Vritti Nirodha). Ultimate Goal: Liberation (Kaivalya) through control over mind and senses. Context of Questions: Likely to involve topics about yoga, meditation, self-awareness, mental control, or achieving spiritual growth. Bhagavad Gita (Part of the Mahabharata) Theme: A sacred discourse delivered by Lord Krishna to Arjuna, addressing the nature of duty, righteousness (Dharma), and the moral dilemmas of life. Key Concepts: Karma Yoga: Path of action. Jnana Yoga: Path of knowledge. Bhakti Yoga: Path of devotion. Dharma: Performing one’s duty selflessly. Inner Conflict: Guidance on overcoming doubts and taking righteous actions. Spiritual and Ethical Teachings: Learning about the soul (Atman), the Supreme Being (Brahman), and life’s transient nature. Characters in Bhagavad Gita: Arjuna: The Pandava prince facing moral dilemmas. Krishna: Lord Vishnu incarnate and Arjuna's charioteer, delivering divine teachings. Duryodhana: Leader of the Kauravas, symbolizing greed and unrighteousness. Dhritarashtra: Blind king of Hastinapur, listening to the battle narration. Sanjaya: Dhritarashtra's advisor, granted divine vision to narrate the events. Classification Rules: If the topic involves yoga, meditation, spiritual practices, imagination, or self-discipline, classify as 0 (Yoga Sutras). If the topic involves duty, morality, dharma, inner conflicts, philosophical discourse on life, or any reference to the characters or teachings of the Gita, classify as 1 (Bhagavad Gita). Respond only with 0 or 1.",
             },
         ],
         model="llama3-8b-8192",
@@ -122,7 +132,7 @@ def process_query(query):
             context = context + " " + enhanced_sentences_yoga[int(i)]
 
     response = get_bot_response(context=context, question=query)
-    # print(context)
+    print(context)
     output_json = {"query": query, "response": response}
 
     return json.dumps(output_json, indent=4)
