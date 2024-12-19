@@ -1,0 +1,6 @@
+pinecone
+pandas
+numpy==1.26.4
+spacy
+groq
+sentence-transformers
