@@ -1,7 +1,6 @@
 from pinecone import Pinecone, ServerlessSpec
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
-import spacy
 from groq import Groq
 import pickle
 import os
