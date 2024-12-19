@@ -47,7 +47,7 @@ def get_bot_response(context="", question=""):
             {"role": "system", "content": "You are a Question answer Machine"},
             {
                 "role": "user",
-                "content": f"Using the provided context: {context}, answer the question: {question}. Ensure your response is entirely based on the context without adding any information not explicitly stated. Consider the reasoning outlined in {chain_of_thought(question)} before formulating your response. Provide a clear, direct, and precise answer as if writing for an exam. Output only the final answer, with only one or two line commentary about the answer",
+                "content": f"Using the provided context: {context}, answer the question: {question}. Ensure your response is entirely based on the context without adding any information not explicitly stated. Consider the reasoning outlined in {chain_of_thought(question)} before formulating your response. Provide a clear, answer with a good explanation make it easy to understand for the reader",
             },
         ],
         model="llama3-8b-8192",
@@ -59,10 +59,10 @@ def get_bot_response(context="", question=""):
 def check_valid(context=""):
     chat_completion = client.chat.completions.create(
         messages=[
-            {"role": "system", "content": "You are a text validator"},
+            {"role": "system", "content": "You are a text classifier who only answers in 0 and 1"},
             {
                 "role": "user",
-                "content": f"{context} - Classify this sentence as 0 or 1: Output 0 if the sentence is: Inappropriate: contains offensive language, nonsensical statements, or irrelevant content. Unrelated to the Mahabharata, Bhagavad Gita, or Patanjali Yoga Sutras, including topics such as mind and body wellness, practices. Examples include sentences discussing unrelated subjects like technology, politics, or everyday activities not linked to the mentioned texts or yoga principles. Output 1 if the sentence is: Related to the Mahabharata, an ancient Indian epic exploring themes of dharma, relationships, morality, and the Kurukshetra War. Related to the Bhagavad Gita, a discourse within the Mahabharata discussing spiritual concepts like duty, selfless action, devotion, and philosophical guidance. Related to the Patanjali Yoga Sutras, which focus on meditation, mental discipline, spiritual growth, and mind-body wellness through yoga practices. Examples include sentences about dharma, yoga practices, meditation, the characters of the Mahabharata, or philosophical teachings from the Gita or Yoga Sutras. Respond with only 0 or 1, nothing else.",
+                "content": f"{context} - Classify the sentence as 0 or 1: Output 0 if the sentence contains foul language or offensive words. Output 1 for all other sentences, including those that do not contain foul language or offensive content, regardless of whether they are related to any specific subject matter. Output only 0 or 1, nothing else. stricly follow the format only give 1 or 0",
             },
         ],
         model="llama3-8b-8192",
@@ -131,7 +131,7 @@ def process_query(query):
 query = input("Enter Your Query: ")
 
 # checking if query is valid
-check = check_valid(query)
+check = check_valid(query.lower().strip())
 
 for i in check:
     if int(i) == 1:
