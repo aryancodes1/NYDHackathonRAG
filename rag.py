@@ -5,13 +5,18 @@ from groq import Groq
 import pickle
 import os
 import json
+from dotenv import load_dotenv
+
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
+
 client = Groq(api_key="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")
-pc = Pinecone(api_key="pcsk_vDpvn_Saet8ExRKrRUYcdhuYrKFXD2oxPWGhLgoE1onf6jWJMY2DXuzRqDHdaSAPxKojh")
+pc = Pinecone(
+    api_key="pcsk_vDpvn_Saet8ExRKrRUYcdhuYrKFXD2oxPWGhLgoE1onf6jWJMY2DXuzRqDHdaSAPxKojh"
+)
 
 
 with open("enhanced_sentences.pkl", "rb") as f:
@@ -19,6 +24,7 @@ with open("enhanced_sentences.pkl", "rb") as f:
 
 with open("enhanced_sentences_yoga.pkl", "rb") as f:
     enhanced_sentences_yoga = pickle.load(f)
+
 
 def chain_of_thought(question=""):
     chat_completion = client.chat.completions.create(
@@ -49,6 +55,7 @@ def get_bot_response(context="", question=""):
     )
     return chat_completion.choices[0].message.content
 
+
 def check_valid(context=""):
     chat_completion = client.chat.completions.create(
         messages=[
@@ -62,6 +69,7 @@ def check_valid(context=""):
         max_tokens=3,
     )
     return chat_completion.choices[0].message.content
+
 
 def check_type(context=""):
     chat_completion = client.chat.completions.create(
@@ -77,6 +85,7 @@ def check_type(context=""):
     )
     return chat_completion.choices[0].message.content
 
+
 def process_query(query):
     query_embedding = model.encode(query)
 
@@ -84,22 +93,28 @@ def process_query(query):
 
     t = check_type(query)
 
-    print(t)
-    if(int(t) == 1):
+    # print(t) t = 0 refers to yoga , t = 1 refers to gita
+    if int(t) == 1:
         answers = index.query(
-            namespace="gita", vector=query_embedding.tolist(), top_k=5, include_values=False
+            namespace="gita",
+            vector=query_embedding.tolist(),
+            top_k=5,
+            include_values=False,
         )
     else:
         answers = index.query(
-            namespace="yoga", vector=query_embedding.tolist(), top_k=5, include_values=False
+            namespace="yoga",
+            vector=query_embedding.tolist(),
+            top_k=5,
+            include_values=False,
         )
 
     idx = []
     for i in answers["matches"]:
         idx.append(i["id"])
-    
+
     context = ""
-    if(int(t) == 1):
+    if int(t) == 1:
         for i in idx:
             context = context + " " + enhanced_sentences[int(i)]
     else:
@@ -107,16 +122,19 @@ def process_query(query):
             context = context + " " + enhanced_sentences_yoga[int(i)]
 
     response = get_bot_response(context=context, question=query)
-    print(context)
+    # print(context)
     output_json = {"query": query, "response": response}
+
     return json.dumps(output_json, indent=4)
 
 
 query = input("Enter Your Query: ")
 
+# checking if query is valid
 check = check_valid(query)
+
 for i in check:
-    if(int(i) == 1):
+    if int(i) == 1:
         print(process_query(query))
     else:
         print("Inappropriate Query Try Again")
