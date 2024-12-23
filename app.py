@@ -57,7 +57,7 @@ def get_bot_response(context="", question=""):
                     f"- Your response should rely strictly on the provided context.\n"
                     f"- Do not add any information or assumptions not explicitly mentioned in the context.\n"
                     f"- Use clear reasoning and explain your answer in a way that is simple and easy to understand.\n"
-                    f"- Incorporate insights from the reasoning outlined in {chain_of_thought(question)} if applicable. but do not show it in the output\n"
+                    f"- Incorporate insights from the reasoning outlined in {chain_of_thought(question)} if applicable. but never answer or show it in the output just use it to give a better answer\n"
                 ),
             },
         ],
@@ -176,11 +176,9 @@ with st.sidebar:
     st.header("Select Your Query Type")
     query_type = st.radio(
         "Choose the type of question:",
-        ("Yoga Sutras", "Bhagavad Gita"),
-        index=0,
+        ("gita", "yoga"),
         help="Select the category your question belongs to.",
     )
-
 
 
 st.title("Bhagavad Gita and Patanjali Yoga Sutras Query Assistant")
@@ -193,7 +191,7 @@ query = st.text_input("Enter your query:", "")
 if query:
     if check_valid(query):
         with st.spinner("Processing your query..."):
-            result = process_query(query)
+            result = process_query(query,namespace=query_type)
         st.success("Query processed successfully!")
         st.json(result)
     else:
