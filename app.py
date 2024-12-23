@@ -5,7 +5,8 @@ from groq import Groq
 import json
 import pickle
 import os
-
+import pandas as pd
+import re 
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -15,6 +16,8 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 client = Groq(api_key="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")
 pc = Pinecone(api_key="pcsk_vDpvn_Saet8ExRKrRUYcdhuYrKFXD2oxPWGhLgoE1onf6jWJMY2DXuzRqDHdaSAPxKojh")
 
+data_gita = pd.read_csv('dataset/Bhagwad_Gita_Verses_English_Questions.csv')
+data_yoga = pd.read_csv('dataset/Patanjali_Yoga_Sutras_Verses_English_Questions.csv')
 
 with open("enhanced_sentences.pkl", "rb") as f:
     enhanced_sentences = pickle.load(f)
@@ -54,7 +57,7 @@ def get_bot_response(context="", question=""):
                     f"- Your response should rely strictly on the provided context.\n"
                     f"- Do not add any information or assumptions not explicitly mentioned in the context.\n"
                     f"- Use clear reasoning and explain your answer in a way that is simple and easy to understand.\n"
-                    f"- Incorporate insights from the reasoning outlined in {chain_of_thought(question)} if applicable.\n"
+                    f"- Incorporate insights from the reasoning outlined in {chain_of_thought(question)} if applicable. but do not show it in the output\n"
                 ),
             },
         ],
@@ -100,12 +103,44 @@ def check_type(context=""):
     return chat_completion.choices[0].message.content
 
 
+def get_sanskrit(data, chapter, verse):
+    result = data.loc[(data['chapter'] == chapter) & (data['verse'] == verse), 'translation']
+    if not result.empty:
+        return result.iloc[0]  
+    else:
+        return None 
+
+def get_chap_verse(context="", query=""):
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a Chapter and Verse Extractor. Your task is to return only the chapter and verse numberS as integers in the format 'chapter : n, verse : n'. Do not include any additional text or explanation.",
+            },
+            {
+                "role": "user",
+                "content": f"Context: {context}\nQuestion: {query}\nProvide the most relevant chapter and verse number related to the question which can help the most in answering the question efficiently and is most related to the question in the exact format 'chapter : n, verse : n'. Only numbers should appear after 'chapter' and 'verse'.",
+            },
+        ],
+        model="llama3-8b-8192",
+        max_tokens=50,
+    )
+    
+    response = chat_completion.choices[0].message.content
+    match = re.search(r"chapter\s*:\s*(\d+),\s*verse\s*:\s*(\d+)", response, re.IGNORECASE)
+    if match:
+        chapter = int(match.group(1))
+        verse = int(match.group(2))
+        return chapter, verse
+    else:
+        raise ValueError("The response format was invalid. Ensure the LLM response matches 'chapter : n, verse : n'.")
+
+
 def process_query(query):
     query_embedding = model.encode(query)
-    index = pc.Index("my-valid-index")
-    question_type = int(check_type(query))
-    namespace = "yoga" if question_type == 0 else "gita"
+    namespace = "yoga" if check_type(query) == 0 else "gita"
 
+    index = pc.Index("my-valid-index")
     answers = index.query(
         namespace=namespace,
         vector=query_embedding.tolist(),
@@ -114,17 +149,19 @@ def process_query(query):
     )
 
     idx = [match["id"] for match in answers["matches"]]
-
     context = " ".join(
-        [
-            enhanced_sentences_yoga[int(i)] if namespace == "yoga" else enhanced_sentences[int(i)]
-            for i in idx
-        ]
+        enhanced_sentences_yoga[int(i)] if namespace == "yoga" else enhanced_sentences[int(i)] for i in idx
     )
 
-    response = get_bot_response(context=context, question=query)
-    output_json = {"query": query, "response": response}
-    return json.dumps(output_json, indent=4)
+    response = get_bot_response(context, query)
+    c, v = get_chap_verse(context, query)
+
+    if namespace == "gita":
+        translation = data_gita.loc[(data_gita['chapter'] == c) & (data_gita['verse'] == v), 'translation'].values[0]
+    else:
+        translation = data_yoga.loc[(data_yoga['chapter'] == c) & (data_yoga['verse'] == v), 'translation'].values[0]
+
+    return {"query": query, "response": response, "chapter": c, "verse": v, "translation": translation}
 
 
 
@@ -146,22 +183,19 @@ with st.sidebar:
     )
 
 
-st.subheader("Ask Your Question")
 
-query = st.text_input("Enter your query:")
-submit_button = st.button("Submit Question")
+st.title("Bhagavad Gita and Patanjali Yoga Sutras Query Assistant")
+st.markdown("""
+This app allows you to query from the Bhagavad Gita or Patanjali Yoga Sutras. Enter your query below to get the most relevant information.
+""")
 
-if submit_button:
+query = st.text_input("Enter your query:", "")
 
-    if int(check_valid(query.lower().strip())) == 1:
-        if query_type == "Yoga Sutras":
-            namespace = "yoga"
-        else:
-            namespace = "gita"
-        
-        result = process_query(query)
-        
-        st.markdown("### Response:")
-        st.text_area("Bot Response", result, height=300)
+if query:
+    if check_valid(query):
+        with st.spinner("Processing your query..."):
+            result = process_query(query)
+        st.success("Query processed successfully!")
+        st.json(result)
     else:
-        st.error("Inappropriate query. Please avoid offensive content.")
+        st.error("Inappropriate Query. Please try again.")

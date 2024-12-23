@@ -6,7 +6,7 @@ import pickle
 import os
 import json
 from dotenv import load_dotenv
-
+import re
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -18,6 +18,8 @@ pc = Pinecone(
     api_key="pcsk_vDpvn_Saet8ExRKrRUYcdhuYrKFXD2oxPWGhLgoE1onf6jWJMY2DXuzRqDHdaSAPxKojh"
 )
 
+data_gita = pd.read_csv('dataset/Bhagwad_Gita_Verses_English_Questions.csv')
+data_yoga = pd.read_csv('dataset/Patanjali_Yoga_Sutras_Verses_English_Questions.csv')
 
 with open("enhanced_sentences.pkl", "rb") as f:
     enhanced_sentences = pickle.load(f)
@@ -104,7 +106,41 @@ def check_type(context=""):
     return chat_completion.choices[0].message.content
 
 
+def get_sanskrit(data, chapter, verse):
+    result = data.loc[(data['chapter'] == chapter) & (data['verse'] == verse), 'translation']
+    if not result.empty:
+        return result.iloc[0]  
+    else:
+        return None 
+
+def get_chap_verse(context="", query=""):
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a Chapter and Verse Extractor. Your task is to return only the chapter and verse numberS as integers in the format 'chapter : n, verse : n'. Do not include any additional text or explanation.",
+            },
+            {
+                "role": "user",
+                "content": f"Context: {context}\nQuestion: {query}\nProvide the most relevant chapter and verse number related to the question which can help the most in answering the question efficiently and is most related to the question in the exact format 'chapter : n, verse : n'. Only numbers should appear after 'chapter' and 'verse'.",
+            },
+        ],
+        model="llama3-8b-8192",
+        max_tokens=50,
+    )
+    
+    response = chat_completion.choices[0].message.content
+    match = re.search(r"chapter\s*:\s*(\d+),\s*verse\s*:\s*(\d+)", response, re.IGNORECASE)
+    if match:
+        chapter = int(match.group(1))
+        verse = int(match.group(2))
+        return chapter, verse
+    else:
+        raise ValueError("The response format was invalid. Ensure the LLM response matches 'chapter : n, verse : n'.")
+
+
 def process_query(query):
+    query = query.lower()
     query_embedding = model.encode(query)
 
     index = pc.Index("my-valid-index")
@@ -139,7 +175,12 @@ def process_query(query):
         )
 
     response = get_bot_response(context=context, question=query)
-    output_json = {"query": query, "response": response}
+    c,v = get_chap_verse(context=context, query=query)
+
+    if namespace == 'gita':
+        output_json = {"query": query, "response": response, "chapter" : c , "verse" : v,'translation' : get_sanskrit(data_gita,chapter=c,verse=v)}
+    else:
+        output_json = {"query": query, "response": response, "chapter" : c , "verse" : v , 'translation' : get_sanskrit(data_yoga,chapter=c,verse=v)}
 
     return json.dumps(output_json, indent=4)
 
