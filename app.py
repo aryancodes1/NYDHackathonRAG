@@ -136,9 +136,8 @@ def get_chap_verse(context="", query=""):
         raise ValueError("The response format was invalid. Ensure the LLM response matches 'chapter : n, verse : n'.")
 
 
-def process_query(query):
+def process_query(query, namespace):
     query_embedding = model.encode(query)
-    namespace = "yoga" if check_type(query) == 0 else "gita"
 
     index = pc.Index("my-valid-index")
     answers = index.query(
