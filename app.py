@@ -84,6 +84,22 @@ def check_valid(context=""):
     )
     return chat_completion.choices[0].message.content
 
+def check_valid_answer(q="", a=""):
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a strict text classifier that evaluates answers. Respond strictly with 1 or 0.",
+            },
+            {
+                "role": "user",
+                "content": f"Question: {q} Answer: {a}. if the answer is grammatically current and responds to the question then respond with 1. If it fails to meet these criteria, respond with 0. Your response must only be 1 or 0, nothing else.",
+            },
+        ],
+        model="llama3-8b-8192",
+        max_tokens=3,
+    )
+    return chat_completion.choices[0].message.content
 
 def check_type(context=""):
     chat_completion = client.chat.completions.create(
@@ -102,6 +118,23 @@ def check_type(context=""):
     )
     return chat_completion.choices[0].message.content
 
+def rewrite_query(query=""):
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a question optimization assistant. Your task is to rewrite questions for maximum clarity, precision, and relevance, ensuring they retrieve the most accurate chunks of information from a database. Respond only with the rewritten query, formatted in clear and concise English.",
+            },
+            {
+                "role": "user",
+                "content": f"Rewrite the following question to optimize for efficient retrieval of relevant chunks from a database. Ensure the rewritten query uses all possible keywords, includes specific terms and key phrases, and provides sufficient context to match the original intent accurately. Respond with the optimized query in plain English and nothing else do not add more questions or elaborate the question just mention key words so that my chunks can be similar retain the words dont use any different words , do not add any questions of your own, in the original question in the begennign of rewritten question only show rewritten question. Original query: {query}'",
+            },
+        ],
+        model="llama3-8b-8192",
+        max_tokens=100,
+    )
+    return chat_completion.choices[0].message.content
+
 
 def get_sanskrit(data, chapter, verse):
     result = data.loc[(data['chapter'] == chapter) & (data['verse'] == verse), 'translation']
@@ -111,32 +144,35 @@ def get_sanskrit(data, chapter, verse):
         return None 
 
 def get_chap_verse(context="", query=""):
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a Chapter and Verse Extractor. Your task is to return only the chapter and verse numberS as integers in the format 'chapter : n, verse : n'. Do not include any additional text or explanation.",
-            },
-            {
-                "role": "user",
-                "content": f"Context: {context}\nQuestion: {query}\nProvide the most relevant chapter and verse number related to the question which can help the most in answering the question efficiently and is most related to the question in the exact format 'chapter : n, verse : n'. Only numbers should appear after 'chapter' and 'verse'.",
-            },
-        ],
-        model="llama3-8b-8192",
-        max_tokens=50,
-    )
-    
-    response = chat_completion.choices[0].message.content
-    match = re.search(r"chapter\s*:\s*(\d+),\s*verse\s*:\s*(\d+)", response, re.IGNORECASE)
-    if match:
-        chapter = int(match.group(1))
-        verse = int(match.group(2))
-        return chapter, verse
-    else:
-        raise ValueError("The response format was invalid. Ensure the LLM response matches 'chapter : n, verse : n'.")
+    while True:  # Keep trying until a valid response is received
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a Chapter and Verse Extractor. Your task is to return only the chapter and verse numbers as integers in the format 'chapter : n, verse : n'. Do not include any additional text or explanation.",
+                },
+                {
+                    "role": "user",
+                    "content": f"Context: {context}\nQuestion: {query}\nProvide the most relevant chapter and verse number related to the question which can help the most in answering the question efficiently and is most related to the question in the exact format 'chapter : n, verse : n'. Only numbers should appear after 'chapter' and 'verse'.",
+                },
+            ],
+            model="llama3-8b-8192",
+            max_tokens=50,
+        )
+        
+        response = chat_completion.choices[0].message.content.strip()
+        match = re.search(r"chapter\s*:\s*(\d+),\s*verse\s*:\s*(\d+)", response, re.IGNORECASE)
+        
+        if match: 
+            chapter = int(match.group(1))
+            verse = int(match.group(2))
+            return chapter, verse 
 
 
 def process_query(query, namespace):
+    query = query.lower()
+    query = rewrite_query(query)
+    print(query)
     query_embedding = model.encode(query)
 
     index = pc.Index("my-valid-index")
@@ -191,8 +227,14 @@ query = st.text_input("Enter your query:", "")
 if query:
     if check_valid(query):
         with st.spinner("Processing your query..."):
-            result = process_query(query,namespace=query_type)
-        st.success("Query processed successfully!")
-        st.json(result)
+            result = None
+            while True: 
+                result = process_query(query, namespace=query_type)
+                print(check_valid_answer(q=query, a=result))
+                if check_valid_answer(q=query, a=result) == "1":
+                    break  
+            st.success("Query processed successfully!")
+            st.json(result)
+
     else:
         st.error("Inappropriate Query. Please try again.")
