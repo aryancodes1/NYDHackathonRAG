@@ -144,6 +144,7 @@ def get_sanskrit(data, chapter, verse):
         return None 
 
 def get_chap_verse(context="", query=""):
+    chapter_verse_list = []  # Initialize an empty list to store chapter and verse pairs
     while True:  # Keep trying until a valid response is received
         chat_completion = client.chat.completions.create(
             messages=[
@@ -153,7 +154,7 @@ def get_chap_verse(context="", query=""):
                 },
                 {
                     "role": "user",
-                    "content": f"Context: {context}\nQuestion: {query}\nProvide the most relevant chapter and verse number related to the question which can help the most in answering the question efficiently and is most related to the question in the exact format 'chapter : n, verse : n'. Only numbers should appear after 'chapter' and 'verse'.",
+                    "content": f"Context: {context}\nQuestion: {query}\nProvide the most relevant chapter and verse numbers related to the question which can help the most in answering the question efficiently and is most related to the question in the exact format 'chapter : n, verse : n'. Only numbers should appear after 'chapter' and 'verse'.",
                 },
             ],
             model="llama3-8b-8192",
@@ -161,13 +162,14 @@ def get_chap_verse(context="", query=""):
         )
         
         response = chat_completion.choices[0].message.content.strip()
-        match = re.search(r"chapter\s*:\s*(\d+),\s*verse\s*:\s*(\d+)", response, re.IGNORECASE)
+        match = re.findall(r"chapter\s*:\s*(\d+),\s*verse\s*:\s*(\d+)", response, re.IGNORECASE)
         
-        if match: 
-            chapter = int(match.group(1))
-            verse = int(match.group(2))
-            return chapter, verse 
-
+        if match:  # If matches are found, convert them into integers and append to the list
+            for m in match:
+                chapter = int(m[0])
+                verse = int(m[1])
+                chapter_verse_list.append([chapter, verse])
+            return chapter_verse_list
 
 def process_query(query, namespace):
     query = query.lower()
@@ -189,15 +191,18 @@ def process_query(query, namespace):
     )
 
     response = get_bot_response(context, query)
-    c, v = get_chap_verse(context, query)
-
-    if namespace == "gita":
-        translation = data_gita.loc[(data_gita['chapter'] == c) & (data_gita['verse'] == v), 'translation'].values[0]
-    else:
-        translation = data_yoga.loc[(data_yoga['chapter'] == c) & (data_yoga['verse'] == v), 'translation'].values[0]
-
-    return {"query": query, "response": response, "chapter": c, "verse": v, "translation": translation}
-
+    chapter_verse_list = get_chap_verse(context, query)
+    translations = []  # List to store translation results
+    
+    for c, v in chapter_verse_list:
+        if namespace == "gita":
+            translation = data_gita.loc[(data_gita['chapter'] == c) & (data_gita['verse'] == v), 'translation'].values[0]
+        else:
+            translation = data_yoga.loc[(data_yoga['chapter'] == c) & (data_yoga['verse'] == v), 'translation'].values[0]
+        
+        translations.append({"chapter": c, "verse": v, "translation": translation})
+    
+    return {"query": query, "response": response, "translations": translations}
 
 
 st.set_page_config(page_title="Knowledge Assistant", page_icon=":robot:", layout="wide")
