@@ -158,7 +158,7 @@ def rewrite_yoga_sutras_query(query=""):
             },
             {
                 "role": "user",
-                "content": f" {query} - output nothing else the output should be like the format given nothing else",
+                "content": f" Rewrite and optimize the following query for effective retrieval of Yoga Sutras Of Patanjali verses: {query} in this format - ""<Original Query>\n<Additional Keywords for Chunks> ""  strictly follow it the additional keywords should be realted to the query and should help rag find out the correct chunks",
             },
         ],
         model="llama3-8b-8192",

@@ -122,7 +122,7 @@ def get_chap_verse(context="", query=""):
             },
             {
                 "role": "user",
-                "content": f"Context: {context}\nQuestion: {query}\nProvide the most relevant chapter and verse number related to the question which can help the most in answering the question efficiently and is most related to the question in the exact format 'chapter : n, verse : n'. Only numbers should appear after 'chapter' and 'verse'.",
+                "content": f"Context: {context}\nQuestion: {query}\nProvide the most relevant chapter and verse number related to the question which can help the most in answering the question efficiently and is most related to the question in the exact format 'chapter : n, verse : n'. Only numbers should appear after 'chapter' and 'verse' only return the one which is most relevant to the question",
             },
         ],
         model="llama3-8b-8192",
