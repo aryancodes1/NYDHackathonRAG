@@ -130,7 +130,7 @@ def rewrite_query(query=""):
                 "content": f"Rewrite the following question to optimize for efficient retrieval of relevant chunks from a database. Ensure the rewritten query uses all possible keywords, includes specific terms and key phrases, and provides sufficient context to match the original intent accurately. Respond with the optimized query in plain English and nothing else do not add more questions or elaborate the question just mention key words so that my chunks can be similar retain the words dont use any different words , do not add any questions of your own, in the original question in the begennign of rewritten question only show rewritten question. Original query: {query}'",
             },
         ],
-        model="llama3-8b-8192",
+        model="llama-3.3-70b-versatile",
         max_tokens=100,
     )
     return chat_completion.choices[0].message.content
@@ -157,7 +157,7 @@ def get_chap_verse(context="", query=""):
                     "content": f"Context: {context}\nQuestion: {query}\nProvide the most relevant chapter and verse numbers related to the question which can help the most in answering the question efficiently and is most related to the question in the exact format 'chapter : n, verse : n'. Only numbers should appear after 'chapter' and 'verse'.",
                 },
             ],
-            model="llama3-8b-8192",
+            model="llama-3.3-70b-versatile",
             max_tokens=50,
         )
         
