@@ -7,16 +7,15 @@ import spacy
 from groq import Groq
 import pickle
 import os
+from sklearn.metrics.pairwise import cosine_similarity
 
 pc = Pinecone(
     api_key="pcsk_vDpvn_Saet8ExRKrRUYcdhuYrKFXD2oxPWGhLgoE1onf6jWJMY2DXuzRqDHdaSAPxKojh"
 )
 
-
 client = Groq(api_key="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")
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
-from sklearn.metrics.pairwise import cosine_similarity
 
 def rewrite_query(query=""):
     chat_completion = client.chat.completions.create(
@@ -37,7 +36,7 @@ def rewrite_query(query=""):
                 "content": f"Rewrite and optimize the following query for effective retrieval of Bhagavad Gita verses: {query}",
             },
         ],
-        model="gemma2-9b-it",
+        model="llama3-8b-8192",
         max_tokens=1000,
     )
     return chat_completion.choices[0].message.content

@@ -123,17 +123,49 @@ def rewrite_query(query=""):
         messages=[
             {
                 "role": "system",
-                "content": "You are a question optimization assistant. Your task is to rewrite questions for maximum clarity, precision, and relevance, ensuring they retrieve the most accurate chunks of information from a database. Respond only with the rewritten query, formatted in clear and concise English.",
+                "content": (
+                    "You are an AI assistant trained to optimize user queries for Retrieval-Augmented Generation (RAG) systems, "
+                    "specializing in retrieving precise and relevant verses from the Bhagavad Gita. Your task is to rewrite the given query "
+                    "to make it more specific, contextually rich, and precise. Ensure the optimized query includes keywords, characters, concepts, "
+                    "or terms specific to the Bhagavad Gita (e.g., Arjuna, Krishna, dharma, karma, moksha) when relevant to the original query. "
+                    "Your response should strictly follow this format:\n\n"
+                    "<Original Query>\n<Additional Keywords for Chunks>"
+                ),
             },
             {
                 "role": "user",
-                "content": f"Rewrite the following question to optimize for efficient retrieval of relevant chunks from a database. Ensure the rewritten query uses all possible keywords, includes specific terms and key phrases, and provides sufficient context to match the original intent accurately. Respond with the optimized query in plain English and nothing else do not add more questions or elaborate the question just mention key words so that my chunks can be similar retain the words dont use any different words , do not add any questions of your own, in the original question in the begennign of rewritten question only show rewritten question. Original query: {query}'",
+                "content": f"Rewrite and optimize the following query for effective retrieval of Bhagavad Gita verses: {query}",
             },
         ],
-        model="llama-3.3-70b-versatile",
-        max_tokens=100,
+        model="llama3-8b-8192",
+        max_tokens=1000,
     )
     return chat_completion.choices[0].message.content
+
+def rewrite_yoga_sutras_query(query=""):
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an AI assistant trained to optimize user queries for Retrieval-Augmented Generation (RAG) systems, "
+                    "specializing in retrieving precise and relevant sutras from the Yoga Sutras of Patanjali. Your task is to rewrite the given query "
+                    "to make it more specific, contextually rich, and precise. Ensure the optimized query includes keywords, concepts, practices, or terms "
+                    "specific to the Yoga Sutras (e.g., ashtanga, samadhi, yama, niyama, dharana, dhyana, pranayama) when relevant to the original query. "
+                    "Your response should strictly follow this format:\n\n"
+                    "<Original Query>\n<Additional Keywords for Chunks>"
+                ),
+            },
+            {
+                "role": "user",
+                "content": f" {query} - output nothing else the output should be like the format given nothing else",
+            },
+        ],
+        model="llama3-8b-8192",
+        max_tokens=1000,
+    )
+    return chat_completion.choices[0].message.content
+
 
 
 def get_sanskrit(data, chapter, verse):
@@ -150,14 +182,14 @@ def get_chap_verse(context="", query=""):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a Chapter and Verse Extractor. Your task is to return only the chapter and verse numbers as integers in the format 'chapter : n, verse : n'. Do not include any additional text or explanation.",
+                    "content": "You are a Chapter and Verse Extractor. Your task is to return only the chapter and verse number as integers in the format 'chapter : n, verse : n'. Do not include any additional text or explanation.",
                 },
                 {
                     "role": "user",
-                    "content": f"Context: {context}\nQuestion: {query}\nProvide the most relevant chapter and verse numbers related to the question which can help the most in answering the question efficiently and is most related to the question in the exact format 'chapter : n, verse : n'. Only numbers should appear after 'chapter' and 'verse'.",
+                    "content": f"Context: {context}\nQuestion: {query}\nProvide the most relevant chapter and verse numbers related to the question which can help the most in answering the question efficiently and is most related to the question in the exact format 'chapter : n, verse : n'. Only numbers should appear after 'chapter' and 'verse' only return the most relevant one to the question",
                 },
             ],
-            model="llama-3.3-70b-versatile",
+            model="llama3-8b-8192",
             max_tokens=50,
         )
         
@@ -173,7 +205,10 @@ def get_chap_verse(context="", query=""):
 
 def process_query(query, namespace):
     query = query.lower()
-    query = rewrite_query(query)
+    if namespace == 'yoga':
+        query = rewrite_yoga_sutras_query(query).lower()
+    else:
+        query = rewrite_query(query)
     print(query)
     query_embedding = model.encode(query)
 
@@ -181,7 +216,7 @@ def process_query(query, namespace):
     answers = index.query(
         namespace=namespace,
         vector=query_embedding.tolist(),
-        top_k=5,
+        top_k=15,
         include_values=False,
     )
 
@@ -192,7 +227,7 @@ def process_query(query, namespace):
 
     response = get_bot_response(context, query)
     chapter_verse_list = get_chap_verse(context, query)
-    translations = []  # List to store translation results
+    translations = []  
     
     for c, v in chapter_verse_list:
         if namespace == "gita":
@@ -226,7 +261,6 @@ st.title("Bhagavad Gita and Patanjali Yoga Sutras Query Assistant")
 st.markdown("""
 This app allows you to query from the Bhagavad Gita or Patanjali Yoga Sutras. Enter your query below to get the most relevant information.
 """)
-
 query = st.text_input("Enter your query:", "")
 
 if query:
