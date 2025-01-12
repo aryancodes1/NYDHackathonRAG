@@ -138,11 +138,59 @@ def get_chap_verse(context="", query=""):
     else:
         raise ValueError("The response format was invalid. Ensure the LLM response matches 'chapter : n, verse : n'.")
 
+def rewrite_query(query=""):
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an AI assistant trained to optimize user queries for Retrieval-Augmented Generation (RAG) systems, "
+                    "specializing in retrieving precise and relevant verses from the Bhagavad Gita. Your task is to rewrite the given query "
+                    "to make it more specific, contextually rich, and precise. Ensure the optimized query includes keywords, characters, concepts, "
+                    "or terms specific to the Bhagavad Gita (e.g., Arjuna, Krishna, dharma, karma, moksha) when relevant to the original query. "
+                    "Your response should strictly follow this format:\n\n"
+                    "<Original Query>\n<Additional Keywords for Chunks>"
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Rewrite and optimize the following query for effective retrieval of Bhagavad Gita verses: {query} in this format - ""<Original Query>\n<Additional Keywords for Chunks> ""  strictly follow it the additional keywords should be realted to the query and should help rag find out the correct chunks",
+            },
+        ],
+        model="llama3-8b-8192",
+        max_tokens=1000,
+    )
+    return chat_completion.choices[0].message.content
+
+def rewrite_yoga_sutras_query(query=""):
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an AI assistant trained to optimize user queries for Retrieval-Augmented Generation (RAG) systems, "
+                    "specializing in retrieving precise and relevant sutras from the Yoga Sutras of Patanjali. Your task is to rewrite the given query "
+                    "to make it more specific, contextually rich, and precise. Ensure the optimized query includes keywords, concepts, practices, or terms "
+                    "specific to the Yoga Sutras (e.g., ashtanga, samadhi, yama, niyama, dharana, dhyana, pranayama) when relevant to the original query. "
+                    "Your response should strictly follow this format:\n\n"
+                    "<Original Query>\n<Additional Keywords for Chunks>"
+                ),
+            },
+            {
+                "role": "user",
+                "content": f" Rewrite and optimize the following query for effective retrieval of Yoga Sutras Of Patanjali verses: {query} in this format - ""<Original Query>\n<Additional Keywords for Chunks> ""  strictly follow it the additional keywords should be realted to the query and should help rag find out the correct chunks",
+            },
+        ],
+        model="llama3-8b-8192",
+        max_tokens=1000,
+    )
+    return chat_completion.choices[0].message.content
 
 def process_query(query):
     query = query.lower()
+    query = rewrite_query(query)
     query_embedding = model.encode(query)
-
+    
     index = pc.Index("my-valid-index")
 
     question_type = int(check_type(query))  # 0 for yoga, 1 for Gita
