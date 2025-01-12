@@ -10,11 +10,9 @@ import re
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
+model = SentenceTransformer("sentence-transformers/multi-qa-distilbert-cos-v1")
 client = Groq(api_key="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")
-pc = Pinecone(api_key="pcsk_vDpvn_Saet8ExRKrRUYcdhuYrKFXD2oxPWGhLgoE1onf6jWJMY2DXuzRqDHdaSAPxKojh")
+pc = Pinecone(api_key="pcsk_XtPP6_3LrRji7Ld7F1Td5pd75aTrmp6nUFsMDsW7yy1CB2V2uvF5QfRUwHMRZzYAJvcXX")
 
 data_gita = pd.read_csv('dataset/Bhagwad_Gita_Verses_English_Questions.csv')
 data_yoga = pd.read_csv('dataset/Patanjali_Yoga_Sutras_Verses_English_Questions.csv')
@@ -176,8 +174,8 @@ def get_sanskrit(data, chapter, verse):
         return None 
 
 def get_chap_verse(context="", query=""):
-    chapter_verse_list = []  # Initialize an empty list to store chapter and verse pairs
-    while True:  # Keep trying until a valid response is received
+    chapter_verse_list = []  
+    while True:  
         chat_completion = client.chat.completions.create(
             messages=[
                 {
@@ -212,7 +210,7 @@ def process_query(query, namespace):
     print(query)
     query_embedding = model.encode(query)
 
-    index = pc.Index("my-valid-index")
+    index = pc.Index("nyd")
     answers = index.query(
         namespace=namespace,
         vector=query_embedding.tolist(),
