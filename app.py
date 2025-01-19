@@ -70,11 +70,19 @@ def check_valid(context=""):
         messages=[
             {
                 "role": "system",
-                "content": "You are a text classifier who only answers in 0 and 1",
+                "content": (
+                    "You are a strict text classifier that evaluates sentences. "
+                    "Classify the input strictly as 0 or 1 based on the following rules: "
+                    "Output 0 if the sentence contains foul language, offensive words, or is unrelated to the Bhagavad Gita or Yoga Sutras. "
+                    "A sentence is considered related if it explicitly mentions concepts, teachings, verses, or philosophies found in the Bhagavad Gita or Yoga Sutras. "
+                    "Examples of related content include discussions on dharma, karma, yoga, meditation, moksha, or any references to the texts themselves. "
+                    "Output 1 that are directly or indirectly related to the Bhagavad Gita or Yoga Sutras. "
+                    "Strictly follow the format and respond only with 0 or 1."
+                ),
             },
             {
                 "role": "user",
-                "content": f"{context} - Classify the sentence as 0 or 1: Output 0 if the sentence contains foul language or offensive words. Output 1 for all other sentences, including those that do not contain foul language or offensive content, regardless of whether they are related to any specific subject matter. Output only 0 or 1, nothing else. stricly follow the format only give 1 or 0",
+                "content": f"{context} - Classify the sentence as 0 or 1:",
             },
         ],
         model="llama3-8b-8192",
@@ -82,16 +90,24 @@ def check_valid(context=""):
     )
     return chat_completion.choices[0].message.content
 
+
+
 def check_valid_answer(q="", a=""):
     chat_completion = client.chat.completions.create(
         messages=[
             {
                 "role": "system",
-                "content": "You are a strict text classifier that evaluates answers. Respond strictly with 1 or 0.",
+                "content": (
+                    "You are a strict text classifier that evaluates answers. "
+                    "Respond strictly with 1 or 0. "
+                    "Output 1 if the answer is grammatically correct, directly responds to the question,and contains no hallucinations or fabricated information. "
+                    "Output 0 if the answer fails to meet these criteria in any way, including incorrect grammar, irrelevance, or hallucinations. "
+                    "Your response must only be 1 or 0, nothing else."
+                ),
             },
             {
                 "role": "user",
-                "content": f"Question: {q} Answer: {a}. if the answer is grammatically current and responds to the question then respond with 1. If it fails to meet these criteria, respond with 0. Your response must only be 1 or 0, nothing else.",
+                "content": f"Question: {q} Answer: {a}. Classify the response:",
             },
         ],
         model="llama3-8b-8192",
@@ -136,7 +152,7 @@ def rewrite_query(query=""):
             },
         ],
         model="llama3-8b-8192",
-        max_tokens=1000,
+        max_tokens=300,
     )
     return chat_completion.choices[0].message.content
 
@@ -156,11 +172,11 @@ def rewrite_yoga_sutras_query(query=""):
             },
             {
                 "role": "user",
-                "content": f" Rewrite and optimize the following query for effective retrieval of Yoga Sutras Of Patanjali verses: {query} in this format - ""<Original Query>\n<Additional Keywords for Chunks> ""  strictly follow it the additional keywords should be realted to the query and should help rag find out the correct chunks",
+                "content": f" Rewrite and optimize the following query for effective retrieval of Yoga Sutras Of Patanjali verses: {query} in this format - ""<Original Query>\n<Additional Keywords for Chunks> ""  strictly follow it the additional keywords should be realted to the query and should help rag find out the correct chunks only give the rewritten output nothing else",
             },
         ],
         model="llama3-8b-8192",
-        max_tokens=1000,
+        max_tokens=300,
     )
     return chat_completion.choices[0].message.content
 
@@ -206,7 +222,7 @@ def process_query(query, namespace):
     if namespace == 'yoga':
         query = rewrite_yoga_sutras_query(query).lower()
     else:
-        query = rewrite_query(query)
+        query = rewrite_query(query).lower()
     print(query)
     query_embedding = model.encode(query)
 
@@ -262,7 +278,8 @@ This app allows you to query from the Bhagavad Gita or Patanjali Yoga Sutras. En
 query = st.text_input("Enter your query:", "")
 
 if query:
-    if check_valid(query):
+    print(check_valid(query))
+    if int(check_valid(query)) == 1:
         with st.spinner("Processing your query..."):
             result = None
             while True: 
@@ -273,5 +290,5 @@ if query:
             st.success("Query processed successfully!")
             st.json(result)
 
-    else:
+    elif(int(check_valid(query)) == 0):
         st.error("Inappropriate Query. Please try again.")
