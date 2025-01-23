@@ -17,10 +17,10 @@ load_dotenv()
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 model = SentenceTransformer("sentence-transformers/multi-qa-distilbert-cos-v1")
-client = Groq(st.secrets['GROQ_API_KEY'])
+client = Groq(st.secrets['secrets']['GROQ_API_KEY'])
 qdrant_client = QdrantClient(
     url="https://bbe512e4-6b6e-475e-bfb5-fe04f5797900.europe-west3-0.gcp.cloud.qdrant.io:6333", 
-    api_key=st.secrets['QDRANT_API_KEY'],
+    api_key=st.secrets['']['QDRANT_API_KEY'],
 )
 
 data_gita = pd.read_csv('dataset/Bhagwad_Gita_Verses_English_Questions.csv')
