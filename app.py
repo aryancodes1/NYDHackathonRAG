@@ -249,14 +249,11 @@ def process_query(query, collection_name):
             query_vector=query_embedding.tolist(),
             limit=15  
         )
-
-    
-
+    print("Query Retrieved")
     idx = [match.id for match in answers]
     context = " ".join(
         enhanced_sentences_yoga[int(i)] if collection_name == "yoga" else enhanced_sentences[int(i)] for i in idx
     )
-    
     response = get_bot_response(context, query)
     chapter_verse_list = get_chap_verse(context, query)
     translations = []  
@@ -269,7 +266,6 @@ def process_query(query, collection_name):
             translation = data_yoga.loc[
                 (data_yoga['chapter'] == c) & (data_yoga['verse'] == v), 'translation'
             ].values[0]
-        
         translations.append({"chapter": c, "verse": v, "translation": translation})
     
     return {"query": query, "response": response, "translations": translations}
