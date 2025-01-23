@@ -302,14 +302,14 @@ query = st.text_input("Enter your query:", "")
 if query:
     t = 5
     print(check_valid(query))
-    if int(check_valid(query)) == 1:
+    if int(check_valid(query)) == 1 or check_valid(query) == "1":
         with st.spinner("Processing your query..."):
             result = None
             while t>0: 
                 result = process_query(query, collection_name=query_type)
                 t-=1
                 print(check_valid_answer(q=query, a=result))
-                if int(check_valid_answer(q=query, a=result)) == 1:
+                if int(check_valid_answer(q=query, a=result)) == 1 or check_valid_answer(q=query, a=result) == "1":
                     break  
             st.success("Query processed successfully!")
             st.json(result)
