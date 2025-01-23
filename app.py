@@ -7,12 +7,21 @@ import pickle
 import os
 import pandas as pd
 import re 
+from dotenv import load_dotenv
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import PointStruct
+from qdrant_client.http.models import Distance, VectorParams
+
+load_dotenv()
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 model = SentenceTransformer("sentence-transformers/multi-qa-distilbert-cos-v1")
-client = Groq(api_key="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")
-pc = Pinecone(api_key="pcsk_XtPP6_3LrRji7Ld7F1Td5pd75aTrmp6nUFsMDsW7yy1CB2V2uvF5QfRUwHMRZzYAJvcXX")
+client = Groq(api_key=os.environ.get('GROQ_API_KEY'))
+qdrant_client = QdrantClient(
+    url="https://bbe512e4-6b6e-475e-bfb5-fe04f5797900.europe-west3-0.gcp.cloud.qdrant.io:6333", 
+    api_key=os.environ.get('QDRANT_API_KEY'),
+)
 
 data_gita = pd.read_csv('dataset/Bhagwad_Gita_Verses_English_Questions.csv')
 data_yoga = pd.read_csv('dataset/Patanjali_Yoga_Sutras_Verses_English_Questions.csv')
@@ -36,7 +45,6 @@ def chain_of_thought(question=""):
         max_tokens=100,
     )
     return chat_completion.choices[0].message.content
-
 
 def get_bot_response(context="", question=""):
     chat_completion = client.chat.completions.create(
@@ -210,48 +218,62 @@ def get_chap_verse(context="", query=""):
         response = chat_completion.choices[0].message.content.strip()
         match = re.findall(r"chapter\s*:\s*(\d+),\s*verse\s*:\s*(\d+)", response, re.IGNORECASE)
         
-        if match:  # If matches are found, convert them into integers and append to the list
+        if match: 
             for m in match:
                 chapter = int(m[0])
                 verse = int(m[1])
                 chapter_verse_list.append([chapter, verse])
             return chapter_verse_list
 
-def process_query(query, namespace):
+def process_query(query, collection_name):
     query = query.lower()
-    if namespace == 'yoga':
+    
+    if collection_name.lower() == 'yoga':
         query = rewrite_yoga_sutras_query(query).lower()
     else:
         query = rewrite_query(query).lower()
+    
     print(query)
+    
     query_embedding = model.encode(query)
+    
+    if collection_name.lower() == "yoga":
+        answers = qdrant_client.search(
+            collection_name="Yoga",
+            query_vector=query_embedding.tolist(),
+            limit=15  
+        )
+    else:
+        answers = qdrant_client.search(
+            collection_name="Gita",
+            query_vector=query_embedding.tolist(),
+            limit=15  
+        )
 
-    index = pc.Index("nyd")
-    answers = index.query(
-        namespace=namespace,
-        vector=query_embedding.tolist(),
-        top_k=15,
-        include_values=False,
-    )
+    
 
-    idx = [match["id"] for match in answers["matches"]]
+    idx = [match.id for match in answers]
     context = " ".join(
-        enhanced_sentences_yoga[int(i)] if namespace == "yoga" else enhanced_sentences[int(i)] for i in idx
+        enhanced_sentences_yoga[int(i)] if collection_name == "yoga" else enhanced_sentences[int(i)] for i in idx
     )
-
+    
     response = get_bot_response(context, query)
     chapter_verse_list = get_chap_verse(context, query)
     translations = []  
-    
     for c, v in chapter_verse_list:
-        if namespace == "gita":
-            translation = data_gita.loc[(data_gita['chapter'] == c) & (data_gita['verse'] == v), 'translation'].values[0]
+        if collection_name == "gita":
+            translation = data_gita.loc[
+                (data_gita['chapter'] == c) & (data_gita['verse'] == v), 'translation'
+            ].values[0]
         else:
-            translation = data_yoga.loc[(data_yoga['chapter'] == c) & (data_yoga['verse'] == v), 'translation'].values[0]
+            translation = data_yoga.loc[
+                (data_yoga['chapter'] == c) & (data_yoga['verse'] == v), 'translation'
+            ].values[0]
         
         translations.append({"chapter": c, "verse": v, "translation": translation})
     
     return {"query": query, "response": response, "translations": translations}
+
 
 
 st.set_page_config(page_title="Knowledge Assistant", page_icon=":robot:", layout="wide")
@@ -283,7 +305,7 @@ if query:
         with st.spinner("Processing your query..."):
             result = None
             while True: 
-                result = process_query(query, namespace=query_type)
+                result = process_query(query, collection_name=query_type)
                 print(check_valid_answer(q=query, a=result))
                 if check_valid_answer(q=query, a=result) == "1":
                     break  

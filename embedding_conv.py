@@ -1,19 +1,17 @@
-from pinecone import Pinecone, ServerlessSpec
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
 import spacy
 from groq import Groq
 import pickle
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 translation = {"धृतराष्ट्र":"Dhritarashtra","सञ्जय":"Sanjay","अर्जुन":"Arjun","भगवान":"God","संजय": "Sanjay"}
 
-client = Groq(api_key="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")
+client = Groq(api_key=os.environ.get('GROQ_API_KEY'))
 nlp = spacy.load("en_core_web_sm")
-model = SentenceTransformer("all-MiniLM-L6-v2")
-pc = Pinecone(
-    api_key="pcsk_vDpvn_Saet8ExRKrRUYcdhuYrKFXD2oxPWGhLgoE1onf6jWJMY2DXuzRqDHdaSAPxKojh"
-)
+model = SentenceTransformer("sentence-transformers/multi-qa-distilbert-cos-v1")
 
 """
 pc.create_index("my-valid-index", dimension=384, metric="cosine", spec=ServerlessSpec(
@@ -21,23 +19,22 @@ pc.create_index("my-valid-index", dimension=384, metric="cosine", spec=Serverles
         region="us-east-1"))"""
 
 
-data = pd.read_csv("NYDHackathonRAG/dataset/Bhagwad_Gita_Verses_English_Questions.csv")
+data = pd.read_csv("/Users/arunkaul/Desktop/NYDRag/NYDHackathonRAG/dataset/Patanjali_Yoga_Sutras_Verses_English_Questions.csv")
 verses = data["translation"]
 
 story = ""
 
 for i in range(len(verses)):
-    if(translation[data['speaker'][i]] == 'Sanjay'):
+    """if(translation[data['speaker'][i]] == 'Sanjay'):
         story = story + " " + "Chapter: " + str(data["chapter"][i]) + ", " + " Verse Number: " + str(data['verse'][i]) + " , "+ translation[data['speaker'][i]] + "," + " Narrates That " + " , " + verses[i]
     else:
-         story = story + " " + "Chapter: " + str(data["chapter"][i]) + ", " + " Verse Number: " + str(data['verse'][i]) + " , "+ translation[data['speaker'][i]] + "," + "Says That " + " , " + verses[i]
-    # story = story + " " + "Chapter: " + str(data["chapter"][i]) + ", " + " Verse Number: " + str(data['verse'][i])  + " , " + verses[i] # used for yoga sutras
+         #story = story + " " + "Chapter: " + str(data["chapter"][i]) + ", " + " Verse Number: " + str(data['verse'][i]) + " , "+ translation[data['speaker'][i]] + "," + "Says That " + " , " + verses[i]"""
+    story = story + " " + "Chapter: " + str(data["chapter"][i]) + ", " + " Verse Number: " + str(data['verse'][i])  + " , " + verses[i] # used for yoga sutras
 
 def text_to_sentences(text):
     doc = nlp(text)
     sentences = [sent.text.strip() for sent in doc.sents if sent.text.strip()]
     return sentences
-
 
 sentences = text_to_sentences(story)
 enhanced_sentences = sentences
@@ -48,7 +45,7 @@ sentence_embeddings = model.encode(enhanced_sentences)
 
 print(len(enhanced_sentences))
 print(enhanced_sentences[0])
-with open("sentence_embeddings.pkl", "wb") as fp:
+with open("sentence_embeddings_yoga.pkl", "wb") as fp:
     pickle.dump(sentence_embeddings, fp)
-with open("enhanced_sentences.pkl", "wb") as f:
+with open("enhanced_sentences_yoga.pkl", "wb") as f:
     pickle.dump(enhanced_sentences, f)
