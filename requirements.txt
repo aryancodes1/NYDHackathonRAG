@@ -6,3 +6,4 @@ groq
 sentence-transformers
 streamlit
 python-dotenv
+qdrant-client
